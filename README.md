@@ -13,5 +13,3 @@ You'll need the following dependencies:
   * `python3`
   * `python3-gi`
   * `python3-setproctitle`
-
-Run `setup.py` to build and install Magnus:
