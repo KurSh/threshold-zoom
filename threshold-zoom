@@ -170,6 +170,7 @@ class Main(object):
 
         # the window
         self.w = Gtk.ApplicationWindow.new(self.app)
+        self.w.set_keep_above(True)
         self.w.set_size_request(300, 300)
         self.w.set_title("Magnus")
         self.w.connect("destroy", lambda a: self.app.quit())
