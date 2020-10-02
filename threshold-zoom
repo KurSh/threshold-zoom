@@ -23,20 +23,21 @@ def threshold(pixbuf):
     i = 0
     p = 0
     numPixels = pixbuf.get_width() * pixbuf.get_height()
+    haveRowstride = False if numPixels * 3 == len(data) else True
     while p < numPixels:
         R = data[i]
         i += 1
-        if i % rowstride == 0:
+        if haveRowstride == True and i % rowstride == 0:
             i += 1
 
         G = data[i]
         i += 1
-        if i % rowstride == 0:
+        if haveRowstride == True and i % rowstride == 0:
             i += 1
 
         B = data[i]
         i += 1
-        if i % rowstride == 0:
+        if haveRowstride == True and i % rowstride == 0:
             i += 1
 
         p += 1
@@ -52,19 +53,19 @@ def threshold(pixbuf):
     while p < numPixels:
         R = data[i]
         i += 1
-        if i % rowstride == 0:
+        if haveRowstride == True and i % rowstride == 0:
             i += 1
             newData.append(0)
 
         G = data[i]
         i += 1
-        if i % rowstride == 0:
+        if haveRowstride == True and i % rowstride == 0:
             i += 1
             newData.append(0)
 
         B = data[i]
         i += 1
-        if i % rowstride == 0:
+        if haveRowstride == True and i % rowstride == 0:
             i += 1
             newData.append(0)
 
