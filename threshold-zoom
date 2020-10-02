@@ -14,12 +14,14 @@ from gi.repository import \
 
 __VERSION__ = "1.0.3"
 
-def threshold(pixbuf):
+def threshold(pixbuf, contrast):
     data = pixbuf.get_pixels()
     has_alpha = pixbuf.get_has_alpha()
     rowstride = pixbuf.get_rowstride()
 
     RGB_avg = 0
+    RGB_min = 0xFF
+    RGB_max = 0
     i = 0
     p = 0
     numPixels = pixbuf.get_width() * pixbuf.get_height()
@@ -42,9 +44,20 @@ def threshold(pixbuf):
 
         p += 1
 
-        RGB_avg += (R+G+B)/3
+        RGB = (R+G+B)/3
+
+        if contrast == True:
+            if RGB > RGB_max:
+                RGB_max = RGB
+            if RGB < RGB_min:
+                RGB_min = RGB
+        else:
+            RGB_avg += RGB
 
     RGB_avg /= (pixbuf.get_height() * pixbuf.get_width())
+
+    if contrast == True:
+        multiplier = 0xFF / (RGB_max - RGB_min)
 
     newData = bytearray()
 
@@ -71,7 +84,13 @@ def threshold(pixbuf):
 
         p += 1
         RGB = (R+G+B)/3
-        pixel = 0xFF if RGB > (RGB_avg) else 0x00
+
+        if contrast == True:
+            RGB -= RGB_min
+            RGB *= multiplier
+            pixel = int(RGB)
+        else:
+            pixel = 0xFF if RGB > (RGB_avg) else 0x00
 
         newData.append(pixel)
         newData.append(pixel)
@@ -91,6 +110,7 @@ def threshold(pixbuf):
 class Main(object):
     def __init__(self):
         self.zoomlevel = 2
+        self.Mode = "threshold"
         self.app = Gtk.Application.new(
             "org.kryogenix.magnus",
             Gio.ApplicationFlags.HANDLES_COMMAND_LINE)
@@ -196,6 +216,15 @@ class Main(object):
         zoom.connect("changed", self.set_zoom)
         head.pack_end(zoom)
 
+        # the mode chooser
+        mode = Gtk.ComboBoxText.new()
+        self.mode = mode
+        mode.append("threshold", "threshold")
+        mode.append("contrast", "contrast")
+        mode.set_active(0)
+        mode.connect("changed", self.set_mode)
+        head.pack_end(mode)
+
         # the box that contains everything
         self.img = Gtk.Image()
         scrolled_window = Gtk.ScrolledWindow()
@@ -245,6 +274,11 @@ class Main(object):
 
     def set_zoom(self, zoom):
         self.zoomlevel = int(zoom.get_active_text()[0])
+        self.poll(force_refresh=True)
+        self.serialise()
+
+    def set_mode(self, mode):
+        self.Mode = mode.get_active_text()
         self.poll(force_refresh=True)
         self.serialise()
 
@@ -327,7 +361,7 @@ class Main(object):
             screenshot = Gdk.pixbuf_get_from_window(
                 root, x - scaled_xoff,
                 y - scaled_yoff, scaled_width, scaled_height)
-            screenshot = threshold(screenshot)
+            screenshot = threshold(screenshot, self.Mode == "contrast")
             scaled_pb = screenshot.scale_simple(
                 self.width, self.height,
                 GdkPixbuf.InterpType.NEAREST)
@@ -382,7 +416,7 @@ class Main(object):
         # we're only storing a small JSON file, so life's too short to hammer
         # on this; we'll write with Python and take the hit.
         fp = codecs.open(self.get_cache_file(), encoding="utf8", mode="w")
-        data = {"zoom": self.zoomlevel}
+        data = {"zoom": self.zoomlevel, "mode" : self.Mode}
         if self.window_metrics:
             data["metrics"] = self.window_metrics
         json.dump(data, fp, indent=2)
@@ -414,6 +448,16 @@ class Main(object):
                 if lid == str(zl):
                     self.zoom.set_active(idx)
                     self.zoomlevel = zl
+                idx += 1
+
+        md = data.get("mode")
+        if md:
+            idx = 0
+            for row in self.mode.get_model():
+                text, lid = list(row)
+                if lid == str(md):
+                    self.mode.set_active(idx)
+                    self.Mode = md
                 idx += 1
         metrics = data.get("metrics")
         if metrics:
